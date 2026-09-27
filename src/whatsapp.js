@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import {mkdir} from 'node:fs/promises';
 
 // Protótipo de um número. Arquivos de sessão nunca devem entrar no Git.
-export function whatsappAdapter(dir) {
+export function whatsappAdapter(dir, onMessage=()=>{}) {
   let socket, starting=false, state='disconnected', qr=null, timer, stopped=false, attempts=0;
   const inbox=[];
   const seen=new Set();
@@ -38,7 +38,9 @@ export function whatsappAdapter(dir) {
         for(const m of messages){
           if(m.key.fromMe || !m.key.id || seen.has(m.key.id))continue;
           seen.add(m.key.id);if(seen.size>1000)seen.delete(seen.values().next().value);
-          inbox.push({id:m.key.id,from:m.key.remoteJid,text:m.message?.conversation||m.message?.extendedTextMessage?.text||'[mídia ou evento]',receivedAt:new Date().toISOString()});
+          const record={id:m.key.id,from:m.key.remoteJid,text:m.message?.conversation||m.message?.extendedTextMessage?.text||'[mídia ou evento]',receivedAt:new Date().toISOString()};
+          try {onMessage(record);}catch{state='storage_error';}
+          inbox.push(record);
           if(inbox.length>100)inbox.shift();
         }
       });

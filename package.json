@@ -1,13 +1,14 @@
 {
   "name": "minha-zap-api",
-  "version": "0.1.0",
-  "description": "Protótipo privado de API WhatsApp para um número",
+  "version": "0.2.0",
+  "description": "Piloto de API WhatsApp com QR Code e Meta Cloud API",
   "directories": {
     "test": "test"
   },
   "scripts": {
     "start": "node --env-file=.env src/index.js",
-    "test": "node --test"
+    "test": "node --test",
+    "setup": "node scripts/setup.js"
   },
   "keywords": [],
   "author": "",

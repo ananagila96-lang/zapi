@@ -1,80 +1,79 @@
-# Minha Zap API — v0.1.0
+# Minha Zap API — v0.2.0
 
-Protótipo independente, sem vínculo com a Z-API ou a Meta. API e painel local para **um número**, usando conexão não oficial por QR Code com Baileys. Não é uma plataforma comercial pronta.
+Piloto independente de integração WhatsApp: QR Code não oficial e conector Meta Cloud API. Sem vínculo com a Z-API. Código desenvolvido para testes de uso próprio, **não pronto para revenda ou operação crítica**.
 
-## O que já existe
+## Incluído
 
-- Painel para conectar por QR e consultar status.
-- Envio individual de texto, com validação e intervalo mínimo de 3 segundos.
-- Últimas 100 mensagens recebidas em memória (apagadas ao reiniciar).
-- Autenticação Bearer em todas as rotas com dados, incluindo QR.
-- Sessão persistida localmente; até 5 tentativas de reconexão com espera progressiva.
-- Testes de autenticação, validação, estado da conexão e limitação de envio.
+- Painel com cadastro e seleção de conexões (limite inicial: cinco).
+- QR Code pelo Baileys ou credenciais da Meta por número.
+- Envio individual de texto; histórico SQLite persistente, separado por conexão.
+- Chave administrativa, limitação de envio por conexão e idempotência persistente.
+- Webhook Meta com verificação GET e assinatura HMAC-SHA256 no POST.
+- Recebimento e status de entrega/leitura da Meta no histórico.
+- Sessões QR persistentes e tentativas limitadas de reconexão.
+- Instalação local, Docker Compose, proxy HTTPS opcional e testes no GitHub Actions.
 
-## Rodar no Windows / PowerShell
+## Começar no Windows
 
-Instale Node.js 24 e Git. Depois:
+Instale Git e Node.js 24. No PowerShell:
 
 ```powershell
 git clone https://github.com/ananagila96-lang/zapi.git
 cd zapi
 npm ci
-Copy-Item .env.example .env
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+npm run setup
 notepad .env
-```
-
-Cole o valor gerado depois de `API_KEY=`. Não compartilhe essa chave. Salve e rode:
-
-```powershell
-npm test
 npm start
 ```
 
-Abra http://127.0.0.1:3000, informe a chave, clique em Entrar e em Conectar WhatsApp. No celular, abra Aparelhos conectados e leia o QR. Comece com um número de teste.
+O setup cria `.env` com uma chave aleatória, sem sobrescrever configurações existentes. Copie o valor de `API_KEY` localmente e abra **http://127.0.0.1:3000**. Informe a chave no painel. Selecione `principal`, clique em Conectar e leia o QR pelo WhatsApp → Aparelhos conectados. Use um número de teste.
 
-O painel mantém a chave só em memória, sem armazenamento no navegador. Após reiniciar o servidor, clique novamente em Conectar para reutilizar a sessão salva. Se o estado for `logged_out`, pare o servidor e remova **somente** `data/session` antes de conectar novamente (isso exige novo pareamento).
+`npm test` executa os testes automatizados. Nenhum teste envia mensagens reais.
+
+**Atualização da v0.1.0:** a sessão antiga era `data/session`; a nova usa `data/sessions/principal`. Com o processo parado, mova a pasta antiga para a nova se precisar reaproveitar o pareamento. Troque `SESSION_DIR` por `DATA_DIR=./data` no `.env`. As rotas da API mudaram nesta versão.
+
+## Meta oficial
+
+O conector está implementado, mas só funciona depois do cadastro e das credenciais do titular na Meta. Siga [docs/META.md](docs/META.md). Não envie senhas, tokens, sessões ou QR Codes para o GitHub.
 
 ## API
 
-Todas as rotas `/api/*` exigem `Authorization: Bearer SUA_CHAVE`.
+Todas as rotas `/api/*` exigem `Authorization: Bearer SUA_API_KEY`. A chave é administrativa e dá acesso a todos os números — não entregue a clientes.
 
 | Método | Rota | Função |
 |---|---|---|
-| GET | `/health` | Servidor ativo, sem dados do WhatsApp |
-| GET | `/api/status` | Estado e QR atual |
-| POST | `/api/connect` | Iniciar conexão |
-| GET | `/api/messages` | Últimas mensagens da sessão do servidor |
-| POST | `/api/send` | JSON com `phone` (DDI + número, só dígitos) e `text` |
+| GET | `/health` | Servidor ativo, sem dados sensíveis |
+| GET | `/api/instances` | Listar conexões |
+| POST | `/api/instances` | Criar: `{ "id": "atendimento", "provider": "qr" }` |
+| GET | `/api/instances/atendimento/status` | Estado e QR |
+| POST | `/api/instances/atendimento/connect` | Iniciar QR ou verificar credenciais Meta |
+| GET | `/api/instances/atendimento/messages` | Histórico recente |
+| POST | `/api/instances/atendimento/send` | Enviar texto |
+| GET/POST | `/webhooks/meta` | Verificação/eventos Meta, protegidos por segredo e assinatura |
 
-O retorno do envio confirma aceitação pelo conector, não entrega/leitura pelo destinatário. Não há reenvio automático: em caso de timeout, verifique a conversa antes de repetir.
+Para criar uma conexão Meta, use `provider: "meta"` e `phoneId` com o ID fornecido pela Meta. Nesta versão todas usam o token do mesmo titular configurado no servidor.
 
-## GitHub e hospedagem
+Envio: corpo `{ "phone": "5561999999999", "text": "Olá" }`, `Content-Type: application/json` e cabeçalho `Idempotency-Key` único (8–100 letras, dígitos, `_` ou `-`). Repetir a mesma chave e o mesmo corpo devolve o resultado anterior sem reenviar. Uma operação incerta fica bloqueada nessa chave: confira a conversa antes de tentar outra. O painel mantém a chave de uma tentativa falha em memória; recarregar a página perde essa associação.
 
-GitHub guarda e versiona o código. **GitHub Pages não executa este servidor Node.js.** Rodar 24h exige computador ligado ou servidor com disco persistente. O padrão escuta só em 127.0.0.1. Não exponha diretamente na internet; antes disso configure HTTPS, proxy e restrições de acesso.
+Resposta `accepted` não prova entrega. Status posteriores da Meta aparecem quando o webhook chega; o conector QR ainda não acompanha confirmações de entrega/leitura. Não há fila durável de reenvios.
 
-Nunca envie `.env`, `data/` ou QR Codes ao GitHub. O repositório é público; credenciais e sessões ficam fora dele. Faça backup protegido da sessão apenas em ambiente confiável. A sessão equivale a acesso à conta.
+## Servidor / GitHub
 
-## E a Meta?
+GitHub guarda o código. **GitHub Pages não executa este servidor.** Veja [docs/DEPLOY.md](docs/DEPLOY.md) para Docker e HTTPS. Para funcionar 24h é necessário servidor/computador ligado e disco persistente.
 
-Esta versão usa **WhatsApp Web não oficial**, não Cloud API. Não precisa de aplicativo Meta para o pareamento por QR, mas isso não significa aprovação da Meta: existe risco de bloqueio e quebra da integração.
+## Proteção e limites
 
-Para uma versão oficial, implementar outro conector com:
+- `.env`, `data/` e `node_modules/` são excluídos do Git e do contexto Docker.
+- Padrão local: `127.0.0.1`. Publicação exige HTTPS e proteção do acesso administrativo.
+- Histórico mantido por 30 dias (`RETENTION_DAYS`); limpeza ao iniciar e diariamente. Metadados de idempotência são mantidos sem expiração nesta versão para evitar reenvios após reinício.
+- Sessões e SQLite ficam no disco **sem criptografia da aplicação**. Proteja servidor, disco e backups. Não compartilhe o volume de dados.
+- QR é não oficial, sujeito a bloqueios e mudanças no WhatsApp. Baileys fixado em `7.0.0-rc14`, pré-lançamento. Sessões em arquivos destinam-se ao piloto.
+- Sem contas de clientes, cobrança, isolamento por usuário, templates Meta, mídia, IA, campanhas ou garantia de disponibilidade.
+- O limite configurável não garante capacidade: medir consumo real antes de aumentar.
+- Após reiniciar, clique em Conectar para cada conexão. Para `logged_out`, pare o serviço e remova **somente a pasta da sessão específica** antes de parear novamente. Isso não remove o histórico.
 
-1. Portfólio empresarial Meta, aplicativo com WhatsApp e conta WhatsApp Business.
-2. Número de teste fornecido pela Meta; depois registro do número real.
-3. Credenciais com permissões apropriadas, mantidas apenas no servidor.
-4. Webhook HTTPS com verificação e validação de assinatura.
-5. Envio pela Cloud API, tratamento de status, modelos e regras de mensagens.
-6. Para cadastrar empresas clientes, avaliar Embedded Signup, revisão de aplicativo e permissões exigidas pela Meta.
+## Verificação realizada
 
-O conector oficial **ainda não está implementado**. Referências: https://developers.facebook.com/docs/whatsapp/cloud-api/ e https://github.com/fbsamples/whatsapp-api-examples .
+Testes automatizados de autenticação, assinatura Meta, validação, idempotência, separação de histórico e persistência após reabertura do SQLite; montagem de envio Meta com transporte simulado. Dependências instaladas e importação do Baileys verificada.
 
-## Limitações / próxima etapa
-
-- Um número e uma chave administrativa; sem isolamento entre clientes.
-- Sem cobrança, IA, webhooks externos, mídias ou histórico durável.
-- `useMultiFileAuthState` é utilizado apenas como solução de protótipo; produção exige armazenamento de credenciais adequado, controle de concorrência e recuperação de falhas.
-- Baileys está fixado em 7.0.0-rc14 (pré-lançamento); validar compatibilidade com conta real antes de uso operacional.
-- Testes locais usam conector simulado: pareamento real, recebimento, envio e reconexão após reinício ainda precisam ser verificados com o titular do número.
-- Não usar campanhas ou disparos em massa neste protótipo.
+**Ainda pendente:** pareamento real, troca de mensagens com número real, credenciais/webhook Meta reais, carga com cinco números e execução Docker num servidor. Não foi contratado nem publicado servidor.
