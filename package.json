@@ -1,0 +1,24 @@
+{
+  "name": "minha-zap-api",
+  "version": "0.1.0",
+  "description": "Protótipo privado de API WhatsApp para um número",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "author": "",
+  "type": "module",
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "10.3.1",
+    "qrcode": "1.5.4"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  }
+}

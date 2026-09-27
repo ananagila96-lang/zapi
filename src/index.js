@@ -1,0 +1,11 @@
+import {createServer} from './server.js';
+import {whatsappAdapter} from './whatsapp.js';
+process.umask(0o077);
+const key=process.env.API_KEY;
+if(!key || key.length<32)throw new Error('Configure API_KEY no .env com pelo menos 32 caracteres');
+const adapter=whatsappAdapter(process.env.SESSION_DIR||'./data/session');
+const server=createServer({key,adapter});
+const host=process.env.HOST||'127.0.0.1';
+const port=Number(process.env.PORT||3000);
+server.listen(port,host,()=>console.log(`Painel: http://${host}:${port}`));
+for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>{adapter.close();server.close(()=>process.exit(0));setTimeout(()=>process.exit(0),3000).unref();});
