@@ -1,0 +1,25 @@
+name: Testar backup por e-mail
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/email-project-backup.yml'
+      - 'central-agentes/test/backup-workflow.test.js'
+      - 'docs/BACKUP_EMAIL.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: central-agentes
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm test
