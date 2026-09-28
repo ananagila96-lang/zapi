@@ -4,11 +4,26 @@ Central própria de agentes, separada do runtime do WhatsApp.
 
 ## Objetivo
 
-Permitir o fluxo:
-
 `Proprietária -> Flashinho Coordenador -> Central -> funcionários especializados -> relatório ao Coordenador`
 
-Cada funcionário terá identidade, instruções, conversa persistente e tarefas próprias. A Central usa a API da OpenAI; ela não tenta criar chats nativos na barra lateral do ChatGPT.
+Cada funcionário tem identidade, instruções, conversa persistente e tarefas próprias. A Central usa a API da OpenAI; a Conversation da API não aparece automaticamente dentro de um Projeto do ChatGPT.
+
+## Funcionários definidos
+
+| Nome | Cargo | Fronteira |
+| --- | --- | --- |
+| Byte | Arquitetura & Desenvolvimento | Código e arquitetura dentro da tarefa recebida |
+| Plug | APIs & Integrações | APIs, webhooks, OAuth e contratos entre serviços |
+| Crash | QA & Testes | Validação e evidência independente |
+| Hype | Marketing & Growth | Propostas de aquisição e campanhas, sem publicar ou gastar |
+
+A fonte dos prompts completos é `agents.json`. Todos respondem ao Flashinho Coordenador, consultam o estado atual do projeto e não mudam estratégia, produto ou prioridades por conta própria. O Coordenador não é duplicado como funcionário.
+
+## Cadastro
+
+No diretório `central-agentes`, rode `npm run seed` para cadastrar os quatro no arquivo apontado por `CENTRAL_DATA_FILE` (padrão: `./data/central-agentes.json`). O comando é idempotente: preserva funcionários já existentes e suas conversas. `npm start -- agents` lista os cadastros.
+
+O cadastro local e os prompts estão definidos no GitHub. Para executarem tarefas com a OpenAI, o ambiente da Central precisa de `OPENAI_API_KEY`. Não confundir este cadastro com quatro chats nativos dentro do Projeto do ChatGPT; a criação desses chats precisa ser verificada separadamente na interface.
 
 ## MVP
 
@@ -27,4 +42,4 @@ Cada funcionário terá identidade, instruções, conversa persistente e tarefas
 
 ## Estado
 
-🟡 MVP em implementação. A conexão real com OpenAI depende de `OPENAI_API_KEY` configurada fora do GitHub.
+🟡 Os quatro funcionários estão definidos em código na branch do MVP. O cadastro em um ambiente persistente, a conexão real com OpenAI e a criação dos chats nativos no Projeto ChatGPT ainda dependem de execução e verificação próprias.
