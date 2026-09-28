@@ -1,0 +1,77 @@
+name: Enviar backup do projeto por e-mail
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup-and-email:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Gerar informações da atualização
+        id: info
+        shell: bash
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          NOW="$(date -u +'%Y-%m-%d_%H-%M-%S_UTC')"
+          ZIP_NAME="zapi-${SHORT_SHA}-${NOW}.zip"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
+          {
+            echo "Projeto: $GITHUB_REPOSITORY"
+            echo "Branch: $GITHUB_REF_NAME"
+            echo "Commit: $GITHUB_SHA"
+            echo "Atualizado por: $GITHUB_ACTOR"
+            echo "Data UTC: $(date -u +'%Y-%m-%d %H:%M:%S')"
+            echo "Mensagem: ${{ github.event.head_commit.message }}"
+          } > ATUALIZACAO.txt
+
+      - name: Criar pasta ZIP do projeto
+        shell: bash
+        run: |
+          zip -r "${{ steps.info.outputs.zip_name }}" . \
+            -x '.git/*' \
+            -x 'node_modules/*' \
+            -x '**/node_modules/*' \
+            -x '.env' \
+            -x '.env.*' \
+            -x '**/.env' \
+            -x '**/.env.*' \
+            -x '*.zip'
+
+      - name: Guardar ZIP como artefato do GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: zapi-backup-${{ steps.info.outputs.short_sha }}
+          path: ${{ steps.info.outputs.zip_name }}
+          retention-days: 30
+
+      - name: Enviar ZIP para os dois e-mails
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.BACKUP_SMTP_SERVER }}
+          server_port: ${{ secrets.BACKUP_SMTP_PORT }}
+          secure: true
+          username: ${{ secrets.BACKUP_SMTP_USERNAME }}
+          password: ${{ secrets.BACKUP_SMTP_PASSWORD }}
+          subject: "[ZAPI] Atualização ${{ steps.info.outputs.short_sha }} + código ZIP"
+          to: strontika@gmail.com,ananagilafs@gmail.com
+          from: ${{ secrets.BACKUP_EMAIL_FROM }}
+          body: |
+            Backup automático do projeto ZAPI.
+
+            Repositório: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Autor: ${{ github.actor }}
+
+            O código atualizado está anexado em formato ZIP.
+            O arquivo ATUALIZACAO.txt dentro do ZIP contém o resumo da atualização.
+          attachments: ${{ steps.info.outputs.zip_name }}
