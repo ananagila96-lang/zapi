@@ -9,7 +9,8 @@
     "start": "node --env-file=.env src/index.js",
     "test": "node --test",
     "setup": "node scripts/setup.js",
-    "handoff": "node scripts/flashinho-handoff.js"
+    "handoff": "node scripts/flashinho-handoff.js",
+    "flashinho:install": "node scripts/install-flashinho-handoff.js"
   },
   "keywords": [],
   "author": "",
