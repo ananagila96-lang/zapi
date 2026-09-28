@@ -31,3 +31,8 @@ Registro das decisões vigentes que devem sobreviver à troca de chats.
 
 **Status:** vigente  
 **Decisão:** ao assumir o projeto, o novo chat deve conferir as evidências no GitHub e continuar da próxima ação registrada, em vez de confiar cegamente no texto do chat anterior.
+
+## D-007 — Padrão reutilizável
+
+**Status:** vigente  
+**Decisão:** o mecanismo Flashinho Handoff deve existir como template instalável e seguro por padrão. A instalação não sobrescreve arquivos existentes sem `--force` e preserva scripts já presentes no `package.json`.
